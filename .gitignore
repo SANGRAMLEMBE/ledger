@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Data — never commit generated batches or real data
+data/*.parquet
+data/*.csv
+data/*.json
+!data/.gitkeep
+
+# Secrets — never, ever
+.env
+*.pem
+*.key
+secrets/
+
+# IDE / OS
+.vscode/*
+# ...but DO share the settings that keep everyone's lint/format identical.
+# Ten contributors with different formatter configs produce diff noise on every
+# PR; these two files are how the repo enforces one setup.
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+.DS_Store
+
+# Personal planning docs — keep the repo root clean for reviewers.
+*.docx

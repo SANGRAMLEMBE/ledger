@@ -1,0 +1,36 @@
+name: ci
+
+# Green CI from commit one. Every PR runs lint, type-check, tests, and a coverage
+# gate. A red build does not merge — this is how ten people keep the trunk clean.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[dev,ml]"
+
+      - name: Lint (ruff)
+        run: ruff check src tests
+
+      - name: Type check (mypy)
+        run: mypy src   # strict, and now gating — annotations settled on Day 2
+
+      - name: Test with coverage
+        run: pytest --cov=ledger --cov-report=term-missing --cov-fail-under=85

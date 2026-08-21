@@ -1,0 +1,15 @@
+# Normalise line endings so a Windows contributor and the Linux CI runner never
+# produce phantom whole-file diffs. Text is stored LF in the repo and checked out
+# native on Windows.
+* text=auto eol=lf
+
+# Windows-only scripts must keep CRLF or cmd.exe mis-parses them.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary — never touch these.
+*.png binary
+*.jpg binary
+*.pdf binary
+*.docx binary
+*.parquet binary
