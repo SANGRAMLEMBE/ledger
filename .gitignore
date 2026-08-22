@@ -39,3 +39,14 @@ secrets/
 
 # Personal planning docs — keep the repo root clean for reviewers.
 *.docx
+
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+# tfvars can carry account ids and CIDRs specific to one operator.
+*.tfvars
+!*.tfvars.example
+# .terraform.lock.hcl is intentionally NOT ignored: it pins provider versions so
+# every contributor and CI resolve the same ones.
