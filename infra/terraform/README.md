@@ -15,15 +15,32 @@ terraform plan
 `init`, `validate` and `plan` are safe — `plan` only makes read-only AWS calls
 and creates nothing.
 
-## Do not apply yet
+## Do not apply — budget is ~$50 in credits
 
-`terraform apply` creates **billable** resources. An RDS instance left running
-for two weeks is real money, and nothing in the build needs a live database until
-integration. Apply when there is something to deploy, and run `terraform destroy`
-when you are done with it.
+`terraform apply` creates **billable** resources against a small, fixed budget.
+Read this before running it.
 
-Check what a plan would cost before applying, and remember that RDS bills for
-being *available*, not for being used.
+A `db.t4g.micro` costs roughly **$12–15/month**. Left running from now to the
+submission date that is a meaningful fraction of the entire budget, spent on a
+database the build does not need: development and the demo run against
+`docker-compose.yml` locally, at zero cost.
+
+**RDS bills for being available, not for being used.** An idle instance costs the
+same as a busy one, so "I'll just leave it up" is the expensive default.
+
+If you do deploy:
+
+```bash
+terraform apply      # only when there is something to deploy
+terraform destroy    # the same day, without exception
+```
+
+Watch the remaining balance in the Billing console under **Credits**, and check
+for anything already running — an EC2 instance forgotten in another project will
+drain this budget quietly and without any signal.
+
+`init`, `validate` and `plan` are always safe. They create nothing and cost
+nothing.
 
 ## Cost decisions, made deliberately
 

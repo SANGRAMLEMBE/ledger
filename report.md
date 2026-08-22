@@ -205,6 +205,31 @@ across four.*
 
 ---
 
+## 4b. Deployment target — decided
+
+**Development and the demo run on Docker. AWS is deliberately not deployed.**
+
+The budget is roughly **$50 in credits**, fixed. A `db.t4g.micro` at ~$12–15/month
+would consume a large share of it for a database the build does not need — the
+full pipeline runs locally in under three seconds, and every reported metric is
+produced on a laptop.
+
+| | |
+|---|---|
+| Local (`docker-compose.yml`) | Postgres 16 on port 5433. Zero cost. The working target. |
+| AWS (`infra/terraform/`) | Written, validated, planned against a real account — **never applied**. |
+
+Terraform still earns its place in the repo: it is the evidence that this is
+deployable and extensible rather than a laptop demo, and reviewers read it. What
+it does not need to be is *running*.
+
+Deploy only if a live endpoint is genuinely wanted for the pitch video, and
+`terraform destroy` the same day.
+
+**Watch:** an EC2 instance from an unrelated project was found running in
+`ap-south-1` since April. Idle resources drain this budget silently — check the
+Billing console before assuming the credits are intact.
+
 ## 5. Open items
 
 | Item | Owner | When |

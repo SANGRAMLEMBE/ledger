@@ -1,0 +1,45 @@
+# Local development stack. Runs on your machine, costs nothing.
+#
+# This is the deploy target for the whole build. The Terraform in infra/ describes
+# the same shape on AWS and exists to prove the system is deployable and
+# extensible — but applying it spends real credits, and the budget here is small
+# enough that an RDS instance left running would consume a meaningful part of it.
+# So: build and demo against this, deploy to AWS deliberately and briefly, if at
+# all.
+#
+#   docker compose up -d        start
+#   docker compose down         stop, keep data
+#   docker compose down -v      stop and wipe data
+#
+# Postgres is exposed on 5433 rather than 5432 so it cannot collide with a
+# Postgres you already have installed — a port clash here shows up as a confusing
+# authentication error against the wrong database.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ledger-postgres
+    environment:
+      POSTGRES_USER: ledger
+      # Local-only credential. This database holds synthetic data on your own
+      # machine and is not reachable from anywhere else. Real credentials come
+      # from Secrets Manager — see infra/terraform/database.tf.
+      POSTGRES_PASSWORD: ledger_local_dev
+      POSTGRES_DB: ledger
+    ports:
+      - "5433:5432"
+    volumes:
+      - ledger_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # Depend on this rather than a sleep: the container reports running well
+      # before Postgres is ready to accept connections, and a fixed wait is
+      # either too short on a cold start or wasted time on a warm one.
+      test: ["CMD-SHELL", "pg_isready -U ledger -d ledger"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  ledger_pgdata:
+    name: ledger_pgdata
