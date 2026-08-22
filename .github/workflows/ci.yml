@@ -34,3 +34,11 @@ jobs:
 
       - name: Test with coverage
         run: pytest --cov=ledger --cov-report=term-missing --cov-fail-under=85
+
+      # The benchmark runs on every push, on the held-out seed. It exits
+      # non-zero on a false match, a lost record, or a guessed-at ambiguity —
+      # the three ways the headline numbers could look better while being
+      # untrue. A regression that breaks correctness fails the build rather
+      # than quietly improving the score.
+      - name: Benchmark (held-out seed)
+        run: python -m ledger.eval.report --events 4000
