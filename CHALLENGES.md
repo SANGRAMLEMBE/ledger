@@ -18,6 +18,24 @@ Format:
 
 ---
 
+### Day 3 — An empty audit sink was falsy, so every entry went to a bin  (Lead 09)
+**Problem:** The harness accepted an `audit_sink` argument, `record_batch`
+reported 832 entries written, and the caller's sink was empty. No error, no
+warning — the audit trail simply did not exist.
+**Root cause:** `AuditTrail(audit_sink or InMemoryLog())`. Both sinks define
+`__len__` so that `len(log)` works, which means an **empty** sink is falsy. `or`
+therefore discarded the caller's sink and substituted a throwaway one. Every
+decision was faithfully recorded into an object nobody held a reference to.
+**Fix:** `audit_sink if audit_sink is not None else InMemoryLog()`.
+**Lesson / guardrail:** `x or default` tests truthiness, not presence. On any
+object defining `__len__` or `__bool__`, the empty-but-valid case takes the
+default. Use an explicit `is not None` whenever the argument is an object rather
+than a scalar. The test that caught it asserts entries land in the sink the
+caller passed, not merely that some count was returned — a returned count proves
+work happened somewhere, not that it happened where you asked.
+
+---
+
 ### Day 2 — The round-trip test proved the generator was inventing data  (Lead 02)
 **Problem:** With the four connectors written, the round-trip
 (`connector.parse([txn.raw]) == txn`) failed for three fields across two sources,

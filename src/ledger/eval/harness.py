@@ -42,6 +42,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
+from ledger.audit.log import AuditSink, AuditTrail, InMemoryLog
+from ledger.audit.recorder import record_batch
 from ledger.domain.models import CanonicalTransaction, Source
 from ledger.exceptions.engine import ExceptionEngine, ExceptionReport, unexplained
 from ledger.ingestion.pipeline import IngestionPipeline, IngestionReport
@@ -95,6 +97,10 @@ class EvalResult:
 
     # Guard against a silently vacuous comparison
     bridge_is_sound: bool = False
+
+    # Audit
+    audit_entries: int = 0
+    batch_id: str = ""
 
     @property
     def match_rate(self) -> float:
@@ -150,7 +156,12 @@ class EvalResult:
 class EvalHarness:
     """Generate, ingest, reconcile, raise exceptions, then score it all."""
 
-    def run(self, seed: int = HELD_OUT_SEED, events: int = 15_000) -> EvalResult:
+    def run(
+        self,
+        seed: int = HELD_OUT_SEED,
+        events: int = 15_000,
+        audit_sink: AuditSink | None = None,
+    ) -> EvalResult:
         started = time.perf_counter()
         batch = SyntheticGenerator(seed=seed).generate(events)
 
@@ -172,6 +183,20 @@ class EvalHarness:
         self._score(batch, ingested, result)
         result.unexplained_records = len(
             unexplained(ingested, reconciliation, exceptions)
+        )
+
+        # Every decision is written down. The trail is recorded from the finished
+        # result rather than threaded through each tier, so it is complete by
+        # construction — there is no path through the engine that skips it.
+        # `audit_sink or InMemoryLog()` would be a bug: both sinks define
+        # __len__, so an EMPTY sink is falsy and the caller's sink would be
+        # silently discarded for a throwaway one. Test against None.
+        trail = AuditTrail(
+            audit_sink if audit_sink is not None else InMemoryLog()
+        )
+        result.batch_id = trail.batch_id
+        result.audit_entries = record_batch(
+            trail, ingested, ingestion, reconciliation, exceptions
         )
         result.reconciliation.elapsed_seconds = reconciliation.elapsed_seconds
         _ = time.perf_counter() - started
