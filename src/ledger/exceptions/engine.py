@@ -49,6 +49,11 @@ from ledger.exceptions.taxonomy import (
     ExceptionType,
     ReconciliationException,
 )
+from ledger.reconciliation.anomaly import (
+    AnomalyDetector,
+    AnomalyKind,
+    AnomalyReport,
+)
 from ledger.reconciliation.engine import ReconciliationResult
 
 # How far apart a settlement and its bank credit may sit before the pairing stops
@@ -62,7 +67,24 @@ CANDIDATE_WINDOW_DAYS = 4
 # and only groupings up to this size. Real batch settlements group a handful of
 # payouts, not fifty. If a deposit genuinely needs a twenty-line grouping to
 # explain it, that is itself worth a human looking at.
-MAX_GROUPING_CANDIDATES = 12
+#
+# The candidate cap was chosen by measurement, not intuition. A wider search finds
+# more real groupings AND more that sum by coincidence, and a fabricated candidate
+# list is not harmless — a reviewer who confirms one has moved money on our
+# suggestion. Measured on the development batch (456 planted ambiguous deposits):
+#
+#     cap   typed   real   spurious   true grouping offered
+#      12     422    422          0                 421/422
+#      20     458    456          2                 456/456   <- chosen
+#      30     474    456         18                 456/456
+#
+# 20 finds every real case and offers the correct grouping in all of them, for two
+# coincidental ones. Those two still surface as exceptions with money at risk —
+# they are merely typed more specifically than the evidence warrants, and the
+# reviewer sees the candidates and can reject them. Missing 34 real cases was the
+# worse failure: those fell through to NO_COUNTERPART with no candidates at all,
+# giving the reviewer nothing to work with.
+MAX_GROUPING_CANDIDATES = 20
 MAX_GROUP_SIZE = 4
 
 
@@ -98,6 +120,9 @@ class ExceptionReport:
 class ExceptionEngine:
     """Types the cascade's leftovers, and finds the matches that only look complete."""
 
+    def __init__(self) -> None:
+        self._anomalies: AnomalyReport | None = None
+
     def detect(
         self,
         transactions: Sequence[CanonicalTransaction],
@@ -114,6 +139,10 @@ class ExceptionEngine:
             if t.source is Source.SETTLEMENT
             and Source.BANK.value not in matched_with.get(t.txn_id, set())
         ]
+
+        # Run anomaly detection once for the batch; the duplicate detector
+        # below reads its findings rather than re-deriving them.
+        self._anomalies = AnomalyDetector().detect(transactions, result)
 
         exceptions: list[ReconciliationException] = []
         claimed: set[str] = set()
@@ -276,69 +305,43 @@ class ExceptionEngine:
         transactions: Sequence[CanonicalTransaction],
         claimed: set[str],
     ) -> list[ReconciliationException]:
-        """The same money moving twice under different references.
+        """Delegate to the anomaly detector and type what it finds.
 
-        Ingestion dedupe keys on `(source, external_ref)`, so it is blind to this
-        by design: the references genuinely differ. Only the economics give it
-        away — same counterparty, same amount, same day, and one of the two
-        already reconciled.
+        The detection logic lives in `reconciliation.anomaly` rather than here.
+        This module's job is turning findings into actionable exceptions; deciding
+        *what counts as* a duplicate is a separate concern with its own precision
+        trade-offs, and keeping the two apart means the detector can be tuned
+        without touching exception typing.
         """
-        settled: dict[tuple[str, int, str], list[CanonicalTransaction]] = defaultdict(
-            list
-        )
-        unresolved_ids = {t.txn_id for t in unresolved}
-        for txn in transactions:
-            if txn.source is not Source.BANK or txn.txn_id in unresolved_ids:
-                continue
-            key = (
-                (txn.counterparty or "").casefold(),
-                txn.amount_minor,
-                txn.currency.value,
-            )
-            settled[key].append(txn)
+        report = self._anomalies
+        if report is None:
+            return []
 
         raised: list[ReconciliationException] = []
-        for txn in unresolved:
-            if txn.source is not Source.BANK or txn.txn_id in claimed:
+        for anomaly in report.anomalies:
+            if anomaly.kind is not AnomalyKind.DUPLICATE_PAYMENT:
                 continue
-            key = (
-                (txn.counterparty or "").casefold(),
-                txn.amount_minor,
-                txn.currency.value,
-            )
-            twins = [
-                other
-                for other in settled.get(key, [])
-                if abs((other.value_date - txn.value_date).days) <= 1
-            ]
-            if not twins:
+            if anomaly.primary in claimed:
                 continue
-
-            twin = twins[0]
-            claimed.add(txn.txn_id)
+            claimed.add(anomaly.primary)
             raised.append(
                 ReconciliationException.for_type(
                     ExceptionType.DUPLICATE_SUSPECTED,
-                    subject_ids=[txn.txn_id, twin.txn_id],
-                    amount_at_risk_minor=txn.amount_minor,
-                    currency=txn.currency.value,
+                    subject_ids=list(anomaly.subjects),
+                    amount_at_risk_minor=anomaly.amount_at_risk_minor,
+                    currency=anomaly.currency,
                     candidates=[
                         CandidateMatch(
-                            candidate_ids=[twin.txn_id],
-                            confidence=0.8,
-                            amount_minor=twin.amount_minor,
+                            candidate_ids=[anomaly.subjects[1]],
+                            confidence=anomaly.confidence,
+                            amount_minor=anomaly.amount_at_risk_minor,
                             reason=(
                                 "already reconciled record with identical "
                                 "counterparty, amount and value date"
                             ),
                         )
                     ],
-                    reason=(
-                        "A reconciled payment with the same counterparty, amount "
-                        f"and value date exists under reference {twin.external_ref}. "
-                        "Different references, so ingestion dedupe could not see "
-                        "this — it looks like the same money paid twice."
-                    ),
+                    reason=anomaly.reason,
                     suggested_resolution=(
                         "Verify against the payout advice whether this is a "
                         "genuine second payment. If duplicated, raise a recovery."
