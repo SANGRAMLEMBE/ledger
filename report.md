@@ -230,6 +230,52 @@ Deploy only if a live endpoint is genuinely wanted for the pitch video, and
 `ap-south-1` since April. Idle resources drain this budget silently — check the
 Billing console before assuming the credits are intact.
 
+## 4c. The ML matching tier — measured, then not built
+
+**Decision: Tiers 2 and 3 (fuzzy + learned matcher) are not built.** This is a
+finding, not an omission, and the evidence is reproducible.
+
+The plan schedules an ML matcher for the "ambiguous tail". We built the
+measurement first and then asked what is actually in that tail. On the held-out
+batch, 1,085 records reach it:
+
+| Residue | Count | Could a matcher correctly resolve it? |
+|---|---|---|
+| `one_to_many_no_utr` | 456 | **No** — must be refused. Several groupings sum to the deposit and no reference distinguishes them. Resolving is guessing with money. |
+| `break_no_ledger` | 396 | **No** — there is genuinely no counterpart. |
+| `duplicate_double_pay` | 227 | **No** — not a matching problem. Anomaly detection's job. |
+| `fx` | 6 | **Yes** — near-misses outside the rate tolerance. |
+
+**Six records out of 55,321 are legitimate work for a matching model.**
+
+So the tier's realistic ceiling is +0.04% match rate. Its downside is not
+symmetric: any model confident enough to resolve those 6 is confident enough to
+start resolving some of the 1,079 it must refuse — and a single false match makes
+the entire run unpublishable under `is_publishable()`. Building it trades a
+rounding error against the one failure the system exists to prevent.
+
+Reproduce the finding:
+
+```bash
+python -m ledger.eval.report          # residue and tier breakdown
+```
+
+**Where the ML work actually is.** Two places have genuine, defensible work, and
+both are better showcases than a matcher with six records to chase:
+
+- **Anomaly detection** (Lead 05) — 227 double-payments under different
+  references. Ingestion dedupe is blind to them by construction; only the
+  economics reveal them. Currently caught by exact heuristics, which is a
+  reasonable baseline for a learned detector to have to beat.
+- **Cash forecasting** (Direction 4) — 365 days of history, recurring monthly
+  patterns, booked outflows, and a confidence band that has to be calibrated
+  rather than merely narrow. Real time-series work with a real metric.
+
+**Revisit this if** the generator's case mix changes to include genuinely
+ambiguous-but-resolvable pairs, or if real source data turns out to be messier
+than the synthetic shapes. Both would move records out of "must refuse" and into
+"could resolve", which is the only thing that would justify the tier.
+
 ## 5. Open items
 
 | Item | Owner | When |
