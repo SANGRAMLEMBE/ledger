@@ -41,8 +41,10 @@ finance system to fail.
 4. **Canonical records are immutable** (`frozen=True`). Corrections create new
    records with audit linkage; they never mutate.
 
-5. **Money is never moved on a guess.** The ML tier auto-resolves only above the
-   confidence threshold (default 0.85). Below it → an exception with candidates.
+5. **Money is never moved on a guess.** Where a key identifies more than one
+   candidate, refuse and pass it down with the candidates attached rather than
+   tie-breaking. If a model tier is ever added it auto-resolves only above its
+   confidence threshold; below it → an exception with candidates.
 
 6. **Every input record lands in exactly one bucket** (matched | excepted).
    Nothing is silently dropped. This is a tested invariant.
@@ -74,8 +76,8 @@ first; a record exits at the first tier that resolves it confidently:
 |------|-------|----------|----------|
 | 0 | Exact | No  | reference-linked joins only — see below |
 | 1 | Rule  | No  | fee-adjusted amount, T+1/T+2 date window, recorded FX rate |
-| 2 | Fuzzy | No  | blocking-key candidates + `rapidfuzz` similarity |
-| 3 | Model | Yes | gradient-boosted classifier on engineered pair features (tail only) |
+| 2 | Fuzzy | No  | **not built** — measured as having 6 records of work; see below |
+| 3 | Model | Yes | **not built** — same measurement |
 
 ### Tier 0 — the keys that actually exist
 
@@ -121,13 +123,17 @@ src/ledger/
   ingestion/
     connectors/base.py    Connector Protocol + BaseConnector.
     connectors/*.py       bank, gateway, settlement, ledger — all four built.
-    pipeline.py           TO BUILD: idempotent ingestion + central dedupe
-  reconciliation/         TO BUILD: the cascade (tiers 0–3)
+    pipeline.py           DONE. Routing + central idempotent dedupe, with the
+                          accounting invariant enforced.
+  reconciliation/         DONE. blocking + deterministic tiers 0-1 + engine +
+                          anomaly. Tiers 2-3 deliberately NOT built — see
+                          report.md 4c for the measurement behind that.
   forecasting/            DONE. history (bank records only) + bootstrap model
                           + walk-forward backtest. Booked outflows are booked,
                           never modelled.
+  eval/                   DONE. The only source of reported metrics.
+  audit/                  DONE. Append-only JSONL trail, PII-free.
   api/                    TO BUILD: REST serving
-  audit/                  TO BUILD: append-only decision log
   security/               TO BUILD: auth, RBAC, secrets, PII policy
   synthetic/generator.py  DONE. Ground-truth data generator (measuring tool).
   synthetic/raw_shapes.py DONE. The raw source payload behind every record.
