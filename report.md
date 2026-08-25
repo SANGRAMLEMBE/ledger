@@ -276,6 +276,53 @@ ambiguous-but-resolvable pairs, or if real source data turns out to be messier
 than the synthetic shapes. Both would move records out of "must refuse" and into
 "could resolve", which is the only thing that would justify the tier.
 
+## 4d. Forecaster — built, and two honest caveats
+
+Direction 4 is implemented: daily cash history from bank records only, booked
+outflows applied exactly, a bootstrap residual model, P10/P50/P90 bands, shortfall
+alerts on P10, and a walk-forward backtest. Run it with:
+
+```bash
+python -m ledger.forecasting.report
+```
+
+Backtest on 365 days of held-out history (seed 42):
+
+| Horizon | MAE | MAPE | P10–P90 coverage |
+|---|---|---|---|
+| T+7 | Rs 1,648,029 | 6.1% | 90.0% |
+| T+14 | Rs 2,167,964 | 4.0% | 85.0% |
+| T+30 | Rs 3,471,599 | 3.0% | 90.0% |
+
+Coverage against a 80% target, so the bands are slightly **wider** than needed —
+the safe direction. Under-coverage would mean more confidence than earned.
+
+### Caveat 1 — the accuracy is flattered by the data
+
+MAPE of 3–6% is better than a real treasury forecast would achieve, and the reason
+is structural rather than skill. The generator assigns each event a **uniformly
+random day**, so daily net flows are close to independent — which is exactly the
+assumption the bootstrap makes when it resamples days. The model matches the
+data-generating process almost perfectly.
+
+Real cash flow is autocorrelated, trends, and clusters around month-end. On real
+data the same model would do materially worse. The honest claim is *"calibrated
+and correctly constructed"*, not *"3% error on real treasury data"*.
+
+### Caveat 2 — the shortfall path is proven by test, not by the benchmark
+
+The synthetic merchant takes in Rs 1.65 crore-scale inflows against Rs 0.21
+crore-scale outflows over the year, so the balance climbs steadily and **no
+shortfall ever fires on this data**. The feature is exercised by unit tests
+(`test_alert_fires_on_p10_not_p50`, `test_lead_time_is_reported`) against
+deliberately draining histories, but the end-to-end benchmark cannot demonstrate
+it.
+
+Fixing this properly means giving the generator a cash-stressed profile —
+outflows comparable to inflows. That is a change to the *shared* dataset and would
+shift reconciliation metrics too, so it is deliberately not being made mid-build.
+Worth doing if the demo needs a live shortfall moment.
+
 ## 5. Open items
 
 | Item | Owner | When |

@@ -123,7 +123,9 @@ src/ledger/
     connectors/*.py       bank, gateway, settlement, ledger — all four built.
     pipeline.py           TO BUILD: idempotent ingestion + central dedupe
   reconciliation/         TO BUILD: the cascade (tiers 0–3)
-  forecasting/            TO BUILD: forward cash position
+  forecasting/            DONE. history (bank records only) + bootstrap model
+                          + walk-forward backtest. Booked outflows are booked,
+                          never modelled.
   api/                    TO BUILD: REST serving
   audit/                  TO BUILD: append-only decision log
   security/               TO BUILD: auth, RBAC, secrets, PII policy
@@ -166,6 +168,8 @@ pytest --cov=ledger --cov-report=term-missing     # tests + coverage
 ruff check src tests                              # lint
 mypy src                                          # types (strict)
 python -m ledger.synthetic.demo --events 15000 --seed 42   # see the data
+python -m ledger.eval.report                      # the three numbers
+python -m ledger.forecasting.report               # forward cash position
 ```
 
 ---
