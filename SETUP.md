@@ -84,7 +84,7 @@ The virtual environment must be active, or `uvicorn` resolves to a global instal
 that cannot import `ledger`:
 
 ```bash
-.venv\Scriptsctivate          # Windows
+.venv\Scripts\activate         # Windows
 # source .venv/bin/activate      # macOS/Linux
 
 # Generate a session token and start the server
