@@ -43,7 +43,7 @@ for the frozen interfaces.
 
 ```bash
 python -m venv .venv
-.venv\Scriptsctivate                 # Windows
+.venv\Scripts\activate                 # Windows
 # source .venv/bin/activate            # macOS/Linux
 pip install -e ".[dev,ml,api]"
 

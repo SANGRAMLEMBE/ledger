@@ -27,7 +27,13 @@ jobs:
         run: pip install -e ".[dev,ml]"
 
       - name: Lint (ruff)
-        run: ruff check src tests
+        run: ruff check src tests scripts
+
+      # Catches a shell escape collapse turning a documented command into a
+      # bell character mid-word. Invisible in a diff, invisible in review,
+      # and it has already happened twice in this repo.
+      - name: Text hygiene
+        run: python scripts/check_text_hygiene.py
 
       - name: Type check (mypy)
         run: mypy src   # strict, and now gating — annotations settled on Day 2

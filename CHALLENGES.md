@@ -18,6 +18,26 @@ Format:
 
 ---
 
+### Day 3 — A shell escape collapse silently corrupted our own docs  (Lead 01)
+**Problem:** `README.md` and `SETUP.md` both ended up documenting the Windows
+activation command with a bell character (U+0007) in the middle of the word.
+`\Scripts\activate` rendered as `\Scriptsctivate` —
+the control character displays as nothing and swallows the letter after it.
+**Root cause:** Editing files by piping a Python heredoc through the shell.
+The shell collapsed the doubled backslashes before Python saw them, so the
+escape for a literal backslash became the escape for a bell. Python emitted a
+SyntaxWarning about the invalid escape sequence and it scrolled past unnoticed.
+**Fix:** Repaired both files by writing the edit script to disk and running it,
+rather than piping it through a shell. Added `scripts/check_text_hygiene.py`,
+now gating CI, which rejects any stray control character in a tracked text file.
+**Lesson / guardrail:** The two files a new contributor reads first were both
+silently wrong, and neither a diff nor a code review would have shown it. When
+an edit involves backslashes, write the script to a file instead of piping it —
+and let a linter check what a human physically cannot see. The guard caught
+this very entry being written the same broken way, on its first run.
+
+---
+
 ### Day 3 — An empty audit sink was falsy, so every entry went to a bin  (Lead 09)
 **Problem:** The harness accepted an `audit_sink` argument, `record_batch`
 reported 832 entries written, and the caller's sink was empty. No error, no
