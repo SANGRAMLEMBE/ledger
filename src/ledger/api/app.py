@@ -24,13 +24,14 @@ from __future__ import annotations
 
 import logging
 import os
+import pathlib
 import secrets
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from ledger.api import service
 from ledger.api.deps import (
@@ -238,6 +239,32 @@ async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
 # --------------------------------------------------------------------------- #
 # Health
 # --------------------------------------------------------------------------- #
+
+
+DASHBOARD = (
+    pathlib.Path(__file__).resolve().parents[3] / "dashboard" / "index.html"
+)
+
+
+@app.get("/", include_in_schema=False)
+def dashboard() -> Response:
+    """Serve the dashboard from the API that feeds it.
+
+    One process rather than a separate static host: a demo with two things to
+    start has two things to forget. The page is also excluded from the OpenAPI
+    document — it is a human surface, not part of the integration contract.
+    """
+    if not DASHBOARD.exists():  # pragma: no cover - packaging safety net
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"detail": "dashboard/index.html is not present"},
+        )
+    return Response(
+        content=DASHBOARD.read_text(encoding="utf-8"),
+        media_type="text/html",
+        # The page carries a bearer token in memory; never let a proxy cache it.
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @app.get("/health", tags=["ops"], summary="Liveness probe")
@@ -454,6 +481,11 @@ def list_matches(
     summary="The decision trail for the current batch",
 )
 def list_audit(
+    decision: str | None = Query(
+        None,
+        description="Filter by decision, e.g. `match_refused` to see only where "
+        "the engine declined to resolve something.",
+    ),
     params: PageParams = Depends(page_params),
     principal: Principal = Depends(require_permission(Permission.READ_AUDIT)),
     store: BatchStore = Depends(get_store),
@@ -462,9 +494,16 @@ def list_audit(
 
     Restricted to reviewers and above: the trail names counterparty references
     and amounts, which is more than a read-only viewer needs.
+
+    The `decision` filter matters more than it looks. A batch writes one entry per
+    match, so refusals — the decisions that left money unreconciled and are the
+    ones an auditor actually came for — sit behind thousands of successes. Without
+    a filter they are technically present and practically unreachable.
     """
     store.require_batch()
     entries = list(store.audit.read())
+    if decision:
+        entries = [e for e in entries if e.get("decision") == decision]
     window, next_cursor = service.paginate(entries, params.cursor, params.limit)
     return {
         "total": len(entries),

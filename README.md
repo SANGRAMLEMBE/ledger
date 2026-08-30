@@ -42,17 +42,40 @@ for the frozen interfaces.
 ## Quickstart
 
 ```bash
-# 1. install (editable, with dev + ml extras)
+python -m venv .venv
+.venv\Scriptsctivate                 # Windows
+# source .venv/bin/activate            # macOS/Linux
 pip install -e ".[dev,ml,api]"
 
-# 2. run the test suite
-pytest
-
-# 3. generate a synthetic batch with ground truth
-python -m ledger.synthetic.demo --events 15000 --seed 42
+pytest -m "not slow"                   # the suite
+python -m ledger.eval.report           # the three numbers, held-out seed
+python scripts/demo_check.py           # every demo step, end to end
 ```
 
-Requires Python ≥ 3.11.
+Requires Python >= 3.11.
+
+### The dashboard
+
+```bash
+$env:LEDGER_DEV_MODE = "1"             # PowerShell; prints a session token
+uvicorn ledger.api:app --reload
+```
+
+Open <http://127.0.0.1:8000>, paste the printed token, press **Connect**, then
+**Run batch**. Interactive API docs are at `/docs`.
+
+There is deliberately no default credential: a static development token is the one
+that reaches production and the one nobody rotates. Set `LEDGER_API_TOKENS` as
+`token:subject:role` for anything real.
+
+### What you can run
+
+| Command | What it shows |
+|---|---|
+| `python -m ledger.eval.report` | match rate, throughput, exceptions, and a publishable/not verdict |
+| `python -m ledger.forecasting.report` | forward cash position with a calibrated band |
+| `python scripts/demo_check.py` | the whole demo path, pass/fail |
+| `pytest -m slow` | load and complexity budget at 55k records |
 
 ## Layout
 
@@ -85,17 +108,38 @@ infra/             Terraform (AWS)
 
 ## Status
 
-**94 tests, 94% coverage, lint clean, strict type-checking gating CI.**
+**Complete and measured.** 300+ tests, ~95% coverage, lint clean, strict
+type-checking and the benchmark both gating CI.
 
-Complete: canonical schema, exception taxonomy, the synthetic generator with
-ground truth, and all four source connectors — round-trip verified across a
-55,321-record batch with zero mismatches.
+| | |
+|---|---|
+| Ingestion | four connectors, central idempotent dedupe, nothing silently dropped |
+| Reconciliation | deterministic tiers with blocking keys, a binding collision policy |
+| Exceptions | typed, priced, with ranked candidates and a suggested fix |
+| Anomaly | double payments dedupe cannot see — 100% recall, 99.6% precision |
+| Forecasting | booked outflows plus a calibrated bootstrap band, walk-forward backtested |
+| Audit | append-only, PII-free, refusals recorded alongside successes |
+| API | authenticated, RBAC with separation of duties, cursor-paginated |
+| Infra | Terraform validated and planned; deliberately not applied |
 
-In progress: the ingestion pipeline, then the deterministic matching tiers, which
-produce the first measured match rate.
+### Deliberately not built
 
-**Honest limitation:** metrics are computed on synthetic data with known ground
-truth, which is what makes a match rate possible at all — real statements carry no
-answer key. The connector round trip proves internal consistency with our assumed
-source shapes, not that those shapes match real exports. See
-[`report.md`](report.md) for coverage and open items.
+Both decisions are recorded with the measurement behind them in
+[`report.md`](report.md), not left as gaps:
+
+- **The ML matching tier.** Of 1,085 records reaching the ambiguous tail, exactly
+  **6** are ones a matcher should resolve; the other 1,079 must be refused. The
+  tier's ceiling was +0.04% match rate against a real risk of introducing false
+  matches, so it was measured and skipped.
+- **Tax-line matching** (Direction 5) — first to cut under time pressure, with a
+  full spec ready if it becomes worth building.
+
+### Honest limitations
+
+- Metrics are on **synthetic data with known ground truth**, which is what makes a
+  match rate possible at all — real statements carry no answer key.
+- Connectors are **self-consistent with our assumed source shapes**, not yet
+  validated against real bank exports.
+- The forecaster's error is **flattered by the data**: the generator assigns events
+  to uniformly random days, close to what the bootstrap assumes.
+- **Throughput varies with batch size.** Quote it from a full 50k+ run.

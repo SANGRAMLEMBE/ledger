@@ -472,3 +472,48 @@ class TestStartupCredentials:
             assert body["role"] == "reviewer"
         finally:
             self._restore()
+
+
+class TestDashboardAndAudit:
+    def test_dashboard_is_served_and_not_cached(self, client):
+        """A page holding a bearer token in memory must not sit in a proxy cache."""
+        response = client.get("/")
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/html")
+        assert response.headers["cache-control"] == "no-store"
+
+    def test_dashboard_carries_no_hard_coded_figures(self, client):
+        """Every number must come from the API, or a stale placeholder gets demoed."""
+        page = client.get("/").text
+        for placeholder in ("94.2%", "3,940", "47,118", "2,882"):
+            assert placeholder not in page
+
+    def test_dashboard_is_not_in_the_integration_contract(self, client):
+        spec = client.get("/openapi.json").json()
+        assert "/" not in spec["paths"]
+
+    def test_audit_can_be_filtered_to_refusals(self, client):
+        """Without this the refusals sit behind thousands of successes.
+
+        They are the decisions that left money unreconciled, and the ones an
+        auditor actually came for — present but unreachable is not good enough.
+        """
+        everything = client.get("/v1/audit?limit=1", headers=REVIEWER).json()
+        refusals = client.get(
+            "/v1/audit?decision=match_refused&limit=5", headers=REVIEWER
+        ).json()
+
+        assert refusals["total"] > 0
+        assert refusals["total"] < everything["total"]
+        for entry in refusals["items"]:
+            assert entry["decision"] == "match_refused"
+            assert entry["detail"]["candidates"], (
+                "a refusal must record what it considered"
+            )
+
+    def test_unknown_decision_filter_returns_empty_not_an_error(self, client):
+        page = client.get(
+            "/v1/audit?decision=no_such_decision", headers=REVIEWER
+        ).json()
+        assert page["total"] == 0
+        assert page["items"] == []

@@ -42,3 +42,10 @@ jobs:
       # than quietly improving the score.
       - name: Benchmark (held-out seed)
         run: python -m ledger.eval.report --events 4000
+
+      # The demo is a graded deliverable, so it is gated like any other. This
+      # walks the full path a judge will see and fails the build if any step
+      # breaks — a broken demo discovered in CI costs minutes; discovered on
+      # stage it costs the submission.
+      - name: Demo path
+        run: python scripts/demo_check.py

@@ -635,9 +635,27 @@
     },
     "/v1/audit": {
       "get": {
-        "description": "Every automated decision, reproducible.\n\nRestricted to reviewers and above: the trail names counterparty references\nand amounts, which is more than a read-only viewer needs.",
+        "description": "Every automated decision, reproducible.\n\nRestricted to reviewers and above: the trail names counterparty references\nand amounts, which is more than a read-only viewer needs.\n\nThe `decision` filter matters more than it looks. A batch writes one entry per\nmatch, so refusals \u2014 the decisions that left money unreconciled and are the\nones an auditor actually came for \u2014 sit behind thousands of successes. Without\na filter they are technically present and practically unreachable.",
         "operationId": "list_audit_v1_audit_get",
         "parameters": [
+          {
+            "description": "Filter by decision, e.g. `match_refused` to see only where the engine declined to resolve something.",
+            "in": "query",
+            "name": "decision",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by decision, e.g. `match_refused` to see only where the engine declined to resolve something.",
+              "title": "Decision"
+            }
+          },
           {
             "in": "query",
             "name": "cursor",
