@@ -411,3 +411,64 @@ class TestOpenApi:
         spec = client.get("/openapi.json").json()
         money = spec["components"]["schemas"]["Money"]
         assert "minor units" in money["properties"]["amount_minor"]["description"]
+
+
+class TestStartupCredentials:
+    """The bootstrap that turns 'up but unusable' into a legible error.
+
+    These tests enter the app's lifespan, which reconfigures the module-level
+    token store. Each one restores the fixture's configuration afterwards so it
+    cannot leak into other tests in this module — a test that silently changes
+    global state for its neighbours is worse than no test.
+    """
+
+    def _restore(self):
+        store = TokenStore()
+        store.add(CONTROLLER_TOKEN, "alice", Role.CONTROLLER)
+        store.add(REVIEWER_TOKEN, "carol", Role.REVIEWER)
+        store.add(VIEWER_TOKEN, "bob", Role.VIEWER)
+        configure(store, RateLimiter(limit=100_000))
+
+    def test_missing_configuration_is_logged_not_silent(self, caplog, monkeypatch):
+        """Every request 401ing with no explanation is the failure to avoid."""
+        monkeypatch.delenv("LEDGER_API_TOKENS", raising=False)
+        monkeypatch.delenv("LEDGER_DEV_MODE", raising=False)
+        try:
+            with caplog.at_level("ERROR"), TestClient(app) as fresh:
+                assert fresh.get("/health").status_code == 200
+                assert fresh.get("/v1/me").status_code == 401
+            assert any(
+                "No API tokens configured" in record.message
+                for record in caplog.records
+            )
+        finally:
+            self._restore()
+
+    def test_dev_mode_generates_a_token_per_session(self, monkeypatch):
+        """Convenient, but never a fixed default — that is what reaches production."""
+        monkeypatch.delenv("LEDGER_API_TOKENS", raising=False)
+        monkeypatch.setenv("LEDGER_DEV_MODE", "1")
+        try:
+            from ledger.api.deps import get_token_store
+
+            with TestClient(app):
+                first = len(get_token_store())
+            assert first == 1
+        finally:
+            self._restore()
+
+    def test_tokens_load_from_the_environment(self, monkeypatch):
+        monkeypatch.delenv("LEDGER_DEV_MODE", raising=False)
+        monkeypatch.setenv(
+            "LEDGER_API_TOKENS", "env-token-long-enough-x:dana:reviewer"
+        )
+        try:
+            with TestClient(app) as fresh:
+                body = fresh.get(
+                    "/v1/me",
+                    headers={"Authorization": "Bearer env-token-long-enough-x"},
+                ).json()
+            assert body["subject"] == "dana"
+            assert body["role"] == "reviewer"
+        finally:
+            self._restore()

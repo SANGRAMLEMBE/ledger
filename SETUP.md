@@ -78,7 +78,30 @@ components depend on them.
 `contracts/CONTRACTS.md` is the frozen interface spec. Read it before touching
 any boundary.
 
-## 7. The working rhythm (keep this discipline)
+## 7. Run the API
+
+The virtual environment must be active, or `uvicorn` resolves to a global install
+that cannot import `ledger`:
+
+```bash
+.venv\Scriptsctivate          # Windows
+# source .venv/bin/activate      # macOS/Linux
+
+# Generate a session token and start the server
+$env:LEDGER_DEV_MODE = "1"       # PowerShell
+uvicorn ledger.api:app --reload
+```
+
+The token is printed at startup. Open <http://127.0.0.1:8000/docs>, click
+**Authorize**, and paste it.
+
+Without `LEDGER_DEV_MODE` or `LEDGER_API_TOKENS` the server starts, logs an
+explicit error, and rejects every request — deliberately, so a misconfiguration is
+visible at startup rather than diagnosed from a stream of identical 401s.
+
+---
+
+## 8. The working rhythm (keep this discipline)
 
 1. Pick the next item from the "What to build next" list in `CONTRIBUTING.md`.
 2. Write the code **and** its test in the same change.

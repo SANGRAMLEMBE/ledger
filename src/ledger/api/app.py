@@ -23,6 +23,10 @@ body is a data leak wearing a helpful face.
 from __future__ import annotations
 
 import logging
+import os
+import secrets
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
@@ -31,6 +35,8 @@ from fastapi.responses import JSONResponse
 from ledger.api import service
 from ledger.api.deps import (
     PageParams,
+    TokenStore,
+    configure,
     correlation_id,
     current_principal,
     encode_cursor,
@@ -53,7 +59,12 @@ from ledger.api.service import (
     ExceptionNotFoundError,
     NoBatchError,
 )
-from ledger.security.rbac import Permission, PermissionDeniedError, Principal
+from ledger.security.rbac import (
+    Permission,
+    PermissionDeniedError,
+    Principal,
+    Role,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +86,48 @@ def reset_store() -> None:
     _store = BatchStore()
 
 
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    """Load credentials before the first request, or say clearly why there are none.
+
+    Without this the token store starts empty and every request answers 401 with
+    no indication of the cause — a server that is up, reachable, and completely
+    unusable. The misconfiguration must be obvious at startup rather than
+    diagnosed from a stream of identical 401s.
+
+    We log and continue rather than exiting. A container that crashloops on a
+    missing environment variable is harder to debug than one that is running and
+    telling you what it needs, and `/health` stays useful either way.
+    """
+    store = TokenStore.from_env()
+
+    if len(store) == 0 and os.environ.get("LEDGER_DEV_MODE") == "1":
+        # A generated token, printed once, different every start. Deliberately
+        # not a fixed default: a static development credential is the one that
+        # reaches production and the one nobody ever rotates.
+        token = secrets.token_urlsafe(24)
+        store.add(token, "dev", Role.CONTROLLER)
+        logger.warning(
+            "LEDGER_DEV_MODE is on. Generated a single-session controller "
+            "token: %s  (use as: Authorization: Bearer <token>)",
+            token,
+        )
+    elif len(store) == 0:
+        logger.error(
+            "No API tokens configured, so every request will be rejected. Set "
+            "LEDGER_API_TOKENS='<token>:<subject>:<role>' (roles: viewer, "
+            "reviewer, controller, admin), or set LEDGER_DEV_MODE=1 to have one "
+            "generated for this session."
+        )
+    else:
+        logger.info("loaded %d API token(s)", len(store))
+
+    configure(store)
+    yield
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="Ledger",
     version="1.0.0",
     description=(
