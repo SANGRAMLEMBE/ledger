@@ -17,6 +17,7 @@ assertion passes vacuously.
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
+from functools import lru_cache
 
 from ledger.domain.models import (
     CanonicalTransaction,
@@ -57,6 +58,11 @@ def txn(**over) -> CanonicalTransaction:
     return CanonicalTransaction(**base)
 
 
+# Cached: every test in this module wants the same batch, and rebuilding it
+# per test turned one pipeline run into a dozen. The results are only read,
+# never mutated, so sharing is safe. A slow suite is a suite people stop
+# running, which costs more than it saves.
+@lru_cache(maxsize=4)
 def reconcile_batch(seed: int, events: int = 4000):
     """Generate -> ingest -> reconcile, with a ground-truth bridge."""
     batch = SyntheticGenerator(seed=seed).generate(events)

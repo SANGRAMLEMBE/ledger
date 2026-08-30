@@ -102,6 +102,11 @@ class EvalResult:
     audit_entries: int = 0
     batch_id: str = ""
 
+    # The canonical records the batch produced. Held so a caller (the API)
+    # can serve them without re-running ingestion, which would assign new
+    # txn_ids and break every reference the result already handed out.
+    transactions: list[CanonicalTransaction] = field(default_factory=list)
+
     @property
     def match_rate(self) -> float:
         """Fraction of should-match events fully reconciled, against ground truth."""
@@ -180,6 +185,7 @@ class EvalHarness:
             reconciliation=reconciliation,
             exceptions=exceptions,
         )
+        result.transactions = list(ingested)
         self._score(batch, ingested, result)
         result.unexplained_records = len(
             unexplained(ingested, reconciliation, exceptions)

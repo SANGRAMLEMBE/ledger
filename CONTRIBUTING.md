@@ -133,8 +133,11 @@ src/ledger/
                           never modelled.
   eval/                   DONE. The only source of reported metrics.
   audit/                  DONE. Append-only JSONL trail, PII-free.
-  api/                    TO BUILD: REST serving
-  security/               TO BUILD: auth, RBAC, secrets, PII policy
+  api/                    DONE. FastAPI. Every route authenticated, every
+                          collection paginated, money as int minor units,
+                          `raw` never served.
+  security/               DONE. RBAC with separation of duties, and PII
+                          redaction for anything leaving the process.
   synthetic/generator.py  DONE. Ground-truth data generator (measuring tool).
   synthetic/raw_shapes.py DONE. The raw source payload behind every record.
 
@@ -173,6 +176,9 @@ pip install -e ".[dev,ml,api]"                    # install
 pytest --cov=ledger --cov-report=term-missing     # tests + coverage
 ruff check src tests                              # lint
 mypy src                                          # types (strict)
+pytest -m "not slow"                              # fast feedback (~5 min)
+pytest -m slow                                    # load + complexity suite
+uvicorn ledger.api:app --reload                   # serve the API
 python -m ledger.synthetic.demo --events 15000 --seed 42   # see the data
 python -m ledger.eval.report                      # the three numbers
 python -m ledger.forecasting.report               # forward cash position

@@ -1,0 +1,1315 @@
+{
+  "components": {
+    "schemas": {
+      "BatchSummaryOut": {
+        "additionalProperties": false,
+        "description": "The three numbers, plus the correctness figures that qualify them.",
+        "properties": {
+          "at_risk": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "batch_id": {
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "exceptions": {
+            "title": "Exceptions",
+            "type": "integer"
+          },
+          "exceptions_by_type": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Exceptions By Type",
+            "type": "object"
+          },
+          "false_matches": {
+            "description": "Wrong auto-matches. Reported separately from match rate on purpose \u2014 blending them hides the failure that costs money.",
+            "title": "False Matches",
+            "type": "integer"
+          },
+          "match_rate": {
+            "title": "Match Rate",
+            "type": "number"
+          },
+          "matched": {
+            "title": "Matched",
+            "type": "integer"
+          },
+          "records_accepted": {
+            "title": "Records Accepted",
+            "type": "integer"
+          },
+          "records_deduplicated": {
+            "title": "Records Deduplicated",
+            "type": "integer"
+          },
+          "records_in": {
+            "title": "Records In",
+            "type": "integer"
+          },
+          "records_rejected": {
+            "title": "Records Rejected",
+            "type": "integer"
+          },
+          "throughput_per_second": {
+            "title": "Throughput Per Second",
+            "type": "number"
+          },
+          "unexplained": {
+            "description": "Records neither matched nor excepted. Must be 0.",
+            "title": "Unexplained",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "batch_id",
+          "records_in",
+          "records_accepted",
+          "records_deduplicated",
+          "records_rejected",
+          "matched",
+          "match_rate",
+          "throughput_per_second",
+          "exceptions",
+          "at_risk",
+          "false_matches",
+          "unexplained",
+          "exceptions_by_type"
+        ],
+        "title": "BatchSummaryOut",
+        "type": "object"
+      },
+      "CandidateOut": {
+        "additionalProperties": false,
+        "properties": {
+          "candidate_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Candidate Ids",
+            "type": "array"
+          },
+          "confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "money": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "candidate_ids",
+          "confidence",
+          "money",
+          "reason"
+        ],
+        "title": "CandidateOut",
+        "type": "object"
+      },
+      "ExceptionOut": {
+        "additionalProperties": false,
+        "description": "An unresolved record, priced and actionable.",
+        "properties": {
+          "at_risk": {
+            "$ref": "#/components/schemas/Money",
+            "description": "Money unresolved because of this."
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/CandidateOut"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "exception_id": {
+            "title": "Exception Id",
+            "type": "string"
+          },
+          "raised_at": {
+            "format": "date-time",
+            "title": "Raised At",
+            "type": "string"
+          },
+          "raised_by": {
+            "title": "Raised By",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "subject_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Subject Ids",
+            "type": "array"
+          },
+          "suggested_resolution": {
+            "title": "Suggested Resolution",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "exception_id",
+          "type",
+          "severity",
+          "subject_ids",
+          "at_risk",
+          "candidates",
+          "reason",
+          "suggested_resolution",
+          "raised_at",
+          "raised_by"
+        ],
+        "title": "ExceptionOut",
+        "type": "object"
+      },
+      "ExceptionPage": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "description": "Records in this page.",
+            "title": "Count",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ExceptionOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` for the next page. Null at end.",
+            "title": "Next Cursor"
+          },
+          "total": {
+            "description": "Total matching records.",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "count",
+          "items"
+        ],
+        "title": "ExceptionPage",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "MatchOut": {
+        "additionalProperties": false,
+        "properties": {
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "is_one_to_many": {
+            "title": "Is One To Many",
+            "type": "boolean"
+          },
+          "left_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Left Ids",
+            "type": "array"
+          },
+          "match_id": {
+            "title": "Match Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "right_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Right Ids",
+            "type": "array"
+          },
+          "tier": {
+            "title": "Tier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id",
+          "left_ids",
+          "right_ids",
+          "tier",
+          "confidence",
+          "reason",
+          "is_one_to_many"
+        ],
+        "title": "MatchOut",
+        "type": "object"
+      },
+      "MatchPage": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "description": "Records in this page.",
+            "title": "Count",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MatchOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` for the next page. Null at end.",
+            "title": "Next Cursor"
+          },
+          "total": {
+            "description": "Total matching records.",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "count",
+          "items"
+        ],
+        "title": "MatchPage",
+        "type": "object"
+      },
+      "Money": {
+        "additionalProperties": false,
+        "description": "An amount and its currency, travelling together.\n\nBundled rather than sent as loose fields so an amount cannot be read without\nits currency. A bare number is the bug that turns 40,000 USD into 40,000 INR.",
+        "properties": {
+          "amount_minor": {
+            "description": "Amount in integer minor units (paise for INR). NEVER a float and never pre-formatted: pair it with `currency` and format at the display edge.",
+            "title": "Amount Minor",
+            "type": "integer"
+          },
+          "currency": {
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Currency",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount_minor",
+          "currency"
+        ],
+        "title": "Money",
+        "type": "object"
+      },
+      "ResolveRequest": {
+        "additionalProperties": false,
+        "description": "Confirm how an exception should be settled.",
+        "properties": {
+          "accept_candidate_index": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Index of the candidate grouping being confirmed. Supplying this asserts money moved that way and requires the approve_money_movement permission \u2014 resolving without it does not.",
+            "title": "Accept Candidate Index"
+          },
+          "idempotency_key": {
+            "description": "Client-generated. A retried request with the same key is acknowledged without applying the resolution twice.",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Idempotency Key",
+            "type": "string"
+          },
+          "resolution": {
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Resolution",
+            "type": "string"
+          }
+        },
+        "required": [
+          "resolution",
+          "idempotency_key"
+        ],
+        "title": "ResolveRequest",
+        "type": "object"
+      },
+      "ResolveResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "accepted_candidate_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted Candidate Index"
+          },
+          "exception_id": {
+            "title": "Exception Id",
+            "type": "string"
+          },
+          "replayed": {
+            "description": "True when this was a retry of an already-applied key.",
+            "title": "Replayed",
+            "type": "boolean"
+          },
+          "resolution": {
+            "title": "Resolution",
+            "type": "string"
+          },
+          "resolved_by": {
+            "title": "Resolved By",
+            "type": "string"
+          }
+        },
+        "required": [
+          "exception_id",
+          "resolved_by",
+          "resolution",
+          "accepted_candidate_index",
+          "replayed"
+        ],
+        "title": "ResolveResponse",
+        "type": "object"
+      },
+      "TransactionOut": {
+        "additionalProperties": false,
+        "description": "A canonical transaction as the API exposes it.\n\nDeliberately excludes `raw`. The original payload carries counterparty names\nand is the single largest PII surface in the system; it stays server-side for\naudit and is never served.",
+        "properties": {
+          "counterparty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Counterparty"
+          },
+          "direction": {
+            "title": "Direction",
+            "type": "string"
+          },
+          "external_ref": {
+            "title": "External Ref",
+            "type": "string"
+          },
+          "fee": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "group_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The payout this record moved with. Null when the source omitted it \u2014 that absence is meaningful, not missing data.",
+            "title": "Group Ref"
+          },
+          "money": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "parent_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The order this record belongs to.",
+            "title": "Parent Ref"
+          },
+          "posted_at": {
+            "format": "date-time",
+            "title": "Posted At",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "txn_id": {
+            "title": "Txn Id",
+            "type": "string"
+          },
+          "value_date": {
+            "format": "date",
+            "title": "Value Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "txn_id",
+          "source",
+          "external_ref",
+          "money",
+          "fee",
+          "direction",
+          "value_date",
+          "posted_at",
+          "status",
+          "counterparty"
+        ],
+        "title": "TransactionOut",
+        "type": "object"
+      },
+      "TransactionPage": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "description": "Records in this page.",
+            "title": "Count",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TransactionOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` for the next page. Null at end.",
+            "title": "Next Cursor"
+          },
+          "total": {
+            "description": "Total matching records.",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "count",
+          "items"
+        ],
+        "title": "TransactionPage",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "An autonomous finance controller. Reconciles transactions across gateway, settlement, bank and internal ledger, and reports every record it refuses to guess at as a typed exception with the money at risk.\n\n**Money is always integer minor units** (paise for INR) paired with a currency \u2014 never a float, never pre-formatted. Format at the display edge.\n\nEvery endpoint requires a bearer token. Collections are cursor-paginated.",
+    "title": "Ledger",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "description": "Unauthenticated on purpose: a load balancer has no bearer token.\n\nIt reports liveness only. Whether a batch has run, how many exceptions exist,\nand anything else about the data stays behind auth.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Health Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Liveness probe",
+        "tags": [
+          "ops"
+        ]
+      }
+    },
+    "/v1/audit": {
+      "get": {
+        "description": "Every automated decision, reproducible.\n\nRestricted to reviewers and above: the trail names counterparty references\nand amounts, which is more than a read-only viewer needs.",
+        "operationId": "list_audit_v1_audit_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Audit V1 Audit Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "The decision trail for the current batch",
+        "tags": [
+          "audit"
+        ]
+      }
+    },
+    "/v1/batches": {
+      "post": {
+        "description": "Ingest, reconcile, raise exceptions, and score against ground truth.\n\nGated on `run_batch` rather than a write permission generally: this is the\nmost expensive operation the service offers, and rate limiting alone would\nnot stop an authenticated viewer from running it repeatedly.",
+        "operationId": "run_batch_v1_batches_post",
+        "parameters": [
+          {
+            "description": "Data seed. 1337 is the held-out set.",
+            "in": "query",
+            "name": "seed",
+            "required": false,
+            "schema": {
+              "default": 1337,
+              "description": "Data seed. 1337 is the held-out set.",
+              "title": "Seed",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "events",
+            "required": false,
+            "schema": {
+              "default": 2000,
+              "maximum": 50000,
+              "minimum": 1,
+              "title": "Events",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchSummaryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run a reconciliation batch",
+        "tags": [
+          "batches"
+        ]
+      }
+    },
+    "/v1/batches/current": {
+      "get": {
+        "operationId": "current_batch_v1_batches_current_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchSummaryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Summary of the current batch",
+        "tags": [
+          "batches"
+        ]
+      }
+    },
+    "/v1/exceptions": {
+      "get": {
+        "description": "The honest list. Sorted by money at risk, descending.\n\nTriage order is the point of this endpoint: a reviewer with an hour should\nspend it on the largest exposure, not on whatever the engine happened to\nraise first.",
+        "operationId": "list_exceptions_v1_exceptions_get",
+        "parameters": [
+          {
+            "description": "Filter by exception type.",
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by exception type.",
+              "title": "Type"
+            }
+          },
+          {
+            "description": "Filter by severity.",
+            "in": "query",
+            "name": "severity",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by severity.",
+              "title": "Severity"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List unresolved exceptions",
+        "tags": [
+          "exceptions"
+        ]
+      }
+    },
+    "/v1/exceptions/{exception_id}": {
+      "get": {
+        "operationId": "get_exception_v1_exceptions__exception_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "exception_id",
+            "required": true,
+            "schema": {
+              "title": "Exception Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "One exception, with its candidates",
+        "tags": [
+          "exceptions"
+        ]
+      }
+    },
+    "/v1/exceptions/{exception_id}/resolve": {
+      "post": {
+        "description": "Record how an exception was settled.\n\nTwo permissions, deliberately. `resolve_exception` admits you here; supplying\n`accept_candidate_index` additionally requires `approve_money_movement`,\nbecause confirming a grouping asserts where money went. A reviewer can work\nthe queue; only a controller can say the money landed a particular way.\n\nIdempotent on `idempotency_key`: a retry is acknowledged, not re-applied.",
+        "operationId": "resolve_exception_v1_exceptions__exception_id__resolve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "exception_id",
+            "required": true,
+            "schema": {
+              "title": "Exception Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resolve an exception",
+        "tags": [
+          "exceptions"
+        ]
+      }
+    },
+    "/v1/matches": {
+      "get": {
+        "operationId": "list_matches_v1_matches_get",
+        "parameters": [
+          {
+            "description": "Filter by cascade tier.",
+            "in": "query",
+            "name": "tier",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by cascade tier.",
+              "title": "Tier"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List reconciled matches with their reasons",
+        "tags": [
+          "matches"
+        ]
+      }
+    },
+    "/v1/me": {
+      "get": {
+        "description": "Lets a client discover its own permissions rather than probing for 403s.",
+        "operationId": "whoami_v1_me_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Whoami V1 Me Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Who am I and what may I do",
+        "tags": [
+          "ops"
+        ]
+      }
+    },
+    "/v1/transactions": {
+      "get": {
+        "operationId": "list_transactions_v1_transactions_get",
+        "parameters": [
+          {
+            "description": "Filter by source.",
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by source.",
+              "title": "Source"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List canonical transactions",
+        "tags": [
+          "transactions"
+        ]
+      }
+    }
+  }
+}
